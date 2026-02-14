@@ -1,0 +1,30 @@
+export type EntryKey = "bid" | "tricks";
+export type RoundPhase = "bidding" | "tricks" | "complete";
+export type ScreenMode = "home" | "setup" | "game" | "rules";
+export type TrumpChoice = "unset" | "none" | "hearts" | "clubs" | "diamonds" | "spades";
+
+export interface RoundEntry {
+  bid: number | null;
+  tricks: number | null;
+  score: number;
+}
+
+export interface GameState {
+  players: string[];
+  rounds: number[];
+  currentRoundIndex: number;
+  startingDealerIndex: number;
+  roundPhases: RoundPhase[];
+  roundTrump: TrumpChoice[];
+  entries: RoundEntry[][];
+}
+
+export interface SetupState {
+  players: string[];
+  startingDealer: string;
+}
+
+export interface LeaderboardRow {
+  name: string;
+  total: number;
+}
