@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { GameState, LeaderboardRow } from "../types";
 
 interface ScoreSheetPanelProps {
@@ -24,9 +24,20 @@ export default function ScoreSheetPanel({
 }: ScoreSheetPanelProps): JSX.Element {
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
   const [downloadError, setDownloadError] = useState<string>("");
+  const [isExpanded, setIsExpanded] = useState<boolean>(isComplete);
 
   const isWinner = (name: string): boolean => winnerNames.includes(name);
   const isShareReady = isComplete && visible;
+  const leader = leaderboard[0] ?? null;
+  const completedRounds = state.roundPhases.filter((phase) => phase === "complete").length;
+  const bestScore = totalsByPlayer.length > 0 ? Math.max(...totalsByPlayer) : 0;
+  const lowestScore = totalsByPlayer.length > 0 ? Math.min(...totalsByPlayer) : 0;
+
+  useEffect(() => {
+    if (isComplete) {
+      setIsExpanded(true);
+    }
+  }, [isComplete]);
 
   function renderScoreTable(): JSX.Element {
     return (
@@ -99,11 +110,49 @@ export default function ScoreSheetPanel({
       <div className="standings-strip">
         {leaderboard.map((row, index) => (
           <div key={`standing-${row.name}`} className={`standing-pill ${isWinner(row.name) ? "winner-pill" : ""}`}>
-            <span>{`#${index + 1} ${row.name}`}</span>
-            <strong>{row.total}</strong>
+            <div className="standing-copy">
+              <span className="standing-rank">{`#${index + 1}`}</span>
+              <div>
+                <strong className="standing-name">{row.name}</strong>
+                <span className="standing-status">
+                  {index === 0 ? "Current leader" : index === leaderboard.length - 1 ? "Currently trailing" : "In contention"}
+                </span>
+              </div>
+            </div>
+            <strong className="standing-total">{row.total}</strong>
           </div>
         ))}
       </div>
+    );
+  }
+
+  function renderFinalHero(): JSX.Element | null {
+    if (!isComplete || !leader) {
+      return null;
+    }
+
+    return (
+      <section className="final-summary-hero">
+        <div className="final-summary-copy">
+          <span className="live-standings-label">Game Complete</span>
+          <h3>{winnerNames.length > 1 ? winnerNames.join(", ") : leader.name}</h3>
+          <p>{winnerNames.length > 1 ? "Shared first place after the final round." : "Finished on top after the final round."}</p>
+        </div>
+        <div className="final-summary-stats">
+          <div className="final-summary-stat">
+            <span>Winning score</span>
+            <strong>{bestScore}</strong>
+          </div>
+          <div className="final-summary-stat">
+            <span>Rounds played</span>
+            <strong>{completedRounds}</strong>
+          </div>
+          <div className="final-summary-stat">
+            <span>Field spread</span>
+            <strong>{bestScore - lowestScore}</strong>
+          </div>
+        </div>
+      </section>
     );
   }
 
@@ -377,10 +426,23 @@ export default function ScoreSheetPanel({
   return (
     <section className={`panel score-sheet-panel ${isComplete ? "is-complete" : ""} ${visible ? "" : "hidden"}`}>
       <div className="panel-head">
-        <h2>{isComplete ? "Final Score Sheet" : "Score Sheet"}</h2>
+        <div>
+          <h2>{isComplete ? "Final Score Sheet" : "Standings"}</h2>
+        </div>
         <div className="panel-head-actions">
+          {!isComplete && (
+            <button
+              type="button"
+              className="btn btn-subtle"
+              onClick={() => setIsExpanded((current) => !current)}
+              aria-expanded={isExpanded}
+              aria-controls="score-sheet-history"
+            >
+              {isExpanded ? "Hide Score Sheet" : "View Score Sheet"}
+            </button>
+          )}
           {isShareReady && (
-            <button type="button" className="btn" onClick={handleShareImage} disabled={isDownloading}>
+            <button type="button" className="btn btn-primary" onClick={handleShareImage} disabled={isDownloading}>
               {isDownloading ? "Preparing Image..." : "Share / Download Image"}
             </button>
           )}
@@ -392,48 +454,72 @@ export default function ScoreSheetPanel({
         </div>
       </div>
       <div className="score-export-target">
+        {renderFinalHero()}
         {isComplete && (
-          <p className="winner-banner">
-            Winner{winnerNames.length > 1 ? "s" : ""}: <strong>{winnerNames.join(", ")}</strong>
-          </p>
+          <div className="winner-banner">
+            <span>Winner{winnerNames.length > 1 ? "s" : ""}</span>
+            <strong>{winnerNames.join(", ")}</strong>
+          </div>
         )}
-        {renderScoreTable()}
-
-        <div className="scoresheet-mobile">
-          {state.rounds.map((_, currentRoundIndex) => (
-            <article key={`mobile-round-${currentRoundIndex + 1}`} className="mobile-round-card">
-              <h3>{`Round ${currentRoundIndex + 1}`}</h3>
-              <div className="mobile-round-head">
-                <span>Player</span>
-                <span>Bid</span>
-                <span>Actual</span>
-                <span>Score</span>
-              </div>
-              {state.players.map((player, playerIndex) => {
-                const entry = state.entries[currentRoundIndex][playerIndex];
-                const isDealer = (state.startingDealerIndex + currentRoundIndex) % state.players.length === playerIndex;
-                return (
-                  <div key={`mobile-row-${currentRoundIndex}-${player}`} className="mobile-round-row">
-                    <span className="mobile-player">
-                      {player}
-                      {isDealer && <span className="mobile-dealer">*</span>}
-                    </span>
-                    <span>{entry.bid ?? ""}</span>
-                    <span>{entry.tricks ?? ""}</span>
-                    <span className={entry.score >= 0 ? "positive" : "negative"}>
-                      {Number.isInteger(entry.bid) && Number.isInteger(entry.tricks) ? entry.score : ""}
-                    </span>
-                  </div>
-                );
-              })}
-            </article>
-          ))}
-        </div>
-
         {renderStandings()}
+
+        <div
+          id="score-sheet-history"
+          className={`score-sheet-history ${isExpanded ? "is-expanded" : ""} ${isComplete ? "is-complete" : ""}`}
+        >
+          <div className="history-head">
+            <div>
+              <span className="live-standings-label">{isComplete ? "Round Audit" : "History"}</span>
+              <h3>{isComplete ? "Full score sheet" : "Round-by-round review"}</h3>
+            </div>
+            <p className="helper">
+              {isComplete
+                ? "Review bids, tricks, dealer order, and per-round scoring before sharing the final result."
+                : "Open the audit trail only when you need detail beyond the live standings."}
+            </p>
+          </div>
+          {renderScoreTable()}
+
+          <div className="scoresheet-mobile">
+            {state.rounds.map((_, currentRoundIndex) => (
+              <article key={`mobile-round-${currentRoundIndex + 1}`} className="mobile-round-card">
+                <h3>{`Round ${currentRoundIndex + 1}`}</h3>
+                <div className="mobile-round-head">
+                  <span>Player</span>
+                  <span>Bid</span>
+                  <span>Actual</span>
+                  <span>Score</span>
+                </div>
+                {state.players.map((player, playerIndex) => {
+                  const entry = state.entries[currentRoundIndex][playerIndex];
+                  const isDealer = (state.startingDealerIndex + currentRoundIndex) % state.players.length === playerIndex;
+                  return (
+                    <div key={`mobile-row-${currentRoundIndex}-${player}`} className="mobile-round-row">
+                      <span className="mobile-player">
+                        {player}
+                        {isDealer && <span className="mobile-dealer">*</span>}
+                      </span>
+                      <span>{entry.bid ?? ""}</span>
+                      <span>{entry.tricks ?? ""}</span>
+                      <span className={entry.score >= 0 ? "positive" : "negative"}>
+                        {Number.isInteger(entry.bid) && Number.isInteger(entry.tricks) ? entry.score : ""}
+                      </span>
+                    </div>
+                  );
+                })}
+              </article>
+            ))}
+          </div>
+        </div>
       </div>
-      {downloadError && <p className="helper helper-error">{downloadError}</p>}
-      <p className="helper">Circle marker in score cell: filled = dealer, open = non-dealer.</p>
+      {downloadError && (
+        <p className="helper helper-error" role="alert" aria-live="assertive">
+          {downloadError}
+        </p>
+      )}
+      {(isExpanded || isComplete) && (
+        <p className="helper">Circle marker in score cell: filled = dealer, open = non-dealer.</p>
+      )}
     </section>
   );
 }

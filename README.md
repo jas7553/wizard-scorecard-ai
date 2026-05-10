@@ -4,6 +4,9 @@ A mobile-friendly Wizard scorepad web app built with React + TypeScript + Webpac
 
 The app is designed for in-person play: enter bids, lock bids, enter tricks won, and track cumulative scoring round-by-round. It includes a rules screen, persistent state, and end-of-game sharing.
 
+The UI/UX overhaul reference for future work lives in [`DESIGN_PRINCIPLES.md`](/Users/jason/Developer/wizard-ai/DESIGN_PRINCIPLES.md).
+The milestone-based execution roadmap for that overhaul lives in [`UI_UX_PROJECT_PLAN.md`](/Users/jason/Developer/wizard-ai/UI_UX_PROJECT_PLAN.md).
+
 ## Tech Stack
 
 - React 18

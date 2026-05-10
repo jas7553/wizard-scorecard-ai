@@ -6,6 +6,7 @@ interface RoundPanelProps {
   state: GameState;
   roundWarning: string;
   onScoreChange: (playerIndex: number, key: EntryKey, value: string) => void;
+  onAdjustScore: (playerIndex: number, key: EntryKey, delta: 1 | -1) => void;
   onTrumpChange: (value: TrumpChoice) => void;
   onMoveRound: (direction: 1 | -1) => void;
   onPrimaryAction: () => void;
@@ -17,23 +18,6 @@ function totalBeforeRound(state: GameState, playerIndex: number, roundIndex: num
     total += state.entries[index][playerIndex].score;
   }
   return total;
-}
-
-function trumpLabel(choice: TrumpChoice): string {
-  switch (choice) {
-    case "hearts":
-      return "Hearts";
-    case "clubs":
-      return "Clubs";
-    case "diamonds":
-      return "Diamonds";
-    case "spades":
-      return "Spades";
-    case "none":
-      return "No Trump";
-    default:
-      return "Unset";
-  }
 }
 
 function trumpSymbol(choice: TrumpChoice): string {
@@ -53,11 +37,23 @@ function trumpSymbol(choice: TrumpChoice): string {
   }
 }
 
+function phaseHeading(phase: RoundPhase): string {
+  switch (phase) {
+    case "tricks":
+      return "Record tricks won";
+    case "complete":
+      return "Round complete";
+    default:
+      return "Enter bids";
+  }
+}
+
 export default function RoundPanel({
   visible,
   state,
   roundWarning,
   onScoreChange,
+  onAdjustScore,
   onTrumpChange,
   onMoveRound,
   onPrimaryAction,
@@ -70,10 +66,10 @@ export default function RoundPanel({
   const roundEntries = state.entries[roundIndex] ?? [];
   const totalBidsThisRound = roundEntries.reduce((sum, entry) => sum + (entry.bid ?? 0), 0);
   const totalTricksEntered = roundEntries.reduce((sum, entry) => sum + (entry.tricks ?? 0), 0);
+  const bidsEnteredCount = roundEntries.filter((entry) => Number.isInteger(entry.bid)).length;
   const tricksEnteredCount = roundEntries.filter((entry) => Number.isInteger(entry.tricks)).length;
 
   const dealerIndex = (state.startingDealerIndex + state.currentRoundIndex) % state.players.length;
-  const dealerName = state.players[dealerIndex] ?? "";
   const isFinalRound = roundIndex === state.rounds.length - 1;
   const trump = state.roundTrump[roundIndex] ?? "unset";
 
@@ -83,50 +79,65 @@ export default function RoundPanel({
       : roundIndex === state.rounds.length - 1
         ? "Finish Game"
         : "Save Round";
+  const progressCount = isBiddingPhase ? bidsEnteredCount : tricksEnteredCount;
+  const progressTotal = roundEntries.length;
+  const progressPercent = progressTotal === 0 ? 0 : (progressCount / progressTotal) * 100;
 
   return (
     <section className={`panel round-panel ${visible ? "" : "hidden"}`}>
-      <div className="panel-head">
-        <div>
+      <div className={`round-phase-banner phase-${currentRoundPhase}`}>
+        <div className="round-phase-copy">
           <div className="round-title-row">
             <h2>{`Round ${roundIndex + 1} of ${state.rounds.length}`}</h2>
+            <span className={`round-phase-pill phase-${currentRoundPhase}`}>{phaseHeading(currentRoundPhase)}</span>
+          </div>
+        </div>
+        <div className="round-phase-progress" aria-live="polite">
+          <div className="round-progress-head">
+            <span>{isBiddingPhase ? "Players ready" : "Entries complete"}</span>
+            <strong>{`${progressCount}/${progressTotal}`}</strong>
+          </div>
+          <div className="round-progress-track" aria-hidden="true">
+            <span className="round-progress-fill" style={{ width: `${progressPercent}%` }} />
+          </div>
+          <p className="round-progress-copy">
+            {isBiddingPhase ? `Bid total: ${totalBidsThisRound}` : `${totalTricksEntered} of ${roundCards} tricks entered`}
+          </p>
+        </div>
+      </div>
+
+      <div className="round-header">
+        <div className={`round-context phase-${currentRoundPhase}`}>
+          <label className="round-context-item trump-control">
+            <span>Trump</span>
             <div className={`trump-banner ${trump === "unset" ? "is-unset" : ""}`}>
               <span className="trump-symbol" aria-hidden="true">
                 {trumpSymbol(trump)}
               </span>
-              <span>{`Trump: ${trumpLabel(trump)}`}</span>
+              <select
+                className="summary-select"
+                value={trump}
+                onChange={(event) => onTrumpChange(event.target.value as TrumpChoice)}
+                disabled={isFinalRound}
+                title={isFinalRound ? "Final round: no trump when all cards are dealt." : undefined}
+                aria-label="Trump"
+              >
+                <option value="unset">Unset</option>
+                <option value="none">No Trump</option>
+                <option value="hearts">Hearts</option>
+                <option value="clubs">Clubs</option>
+                <option value="diamonds">Diamonds</option>
+                <option value="spades">Spades</option>
+              </select>
             </div>
+          </label>
+          <div className="round-context-item round-progress-summary">
+            <span>{isBiddingPhase ? "Round bids" : "Trick total"}</span>
+            <strong>{isBiddingPhase ? totalBidsThisRound : totalTricksEntered}</strong>
           </div>
-        </div>
-        <div className="round-summary">
-          <div className="summary-item">
-            <span>Dealer</span>
-            <strong>{dealerName || "-"}</strong>
-          </div>
-          <div className="summary-item">
-            <span>Phase</span>
-            <strong>{isBiddingPhase ? "Bidding" : "Play"}</strong>
-          </div>
-          <div className="summary-item">
-            <span>Trump</span>
-            <select
-              className="summary-select"
-              value={trump}
-              onChange={(event) => onTrumpChange(event.target.value as TrumpChoice)}
-              disabled={isFinalRound}
-              title={isFinalRound ? "Final round: no trump when all cards are dealt." : undefined}
-            >
-              <option value="unset">Unset</option>
-              <option value="none">None</option>
-              <option value="hearts">Hearts</option>
-              <option value="clubs">Clubs</option>
-              <option value="diamonds">Diamonds</option>
-              <option value="spades">Spades</option>
-            </select>
-          </div>
-          <div className="summary-item">
-            <span>{isBiddingPhase ? "Bids Total" : "Tricks Entered"}</span>
-            <strong>{isBiddingPhase ? totalBidsThisRound : `${tricksEnteredCount}/${roundEntries.length} (${totalTricksEntered})`}</strong>
+          <div className="round-context-item round-progress-summary">
+            <span>{isBiddingPhase ? "Target" : "Required total"}</span>
+            <strong>{roundCards}</strong>
           </div>
         </div>
       </div>
@@ -140,137 +151,90 @@ export default function RoundPanel({
         ))}
       </div>
 
-      <div className="table-wrap desktop-only">
-        <table className="round-entry-table">
-          <colgroup>
-            <col className="col-player" />
-            <col className="col-bid" />
-            <col className="col-tricks" />
-            <col className="col-round-score" />
-            <col className="col-total" />
-          </colgroup>
-          <thead>
-            <tr>
-              <th>Player</th>
-              <th>Bid</th>
-              <th>Tricks Won</th>
-              <th>Round Score</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {state.players.map((player, playerIndex) => {
-              const entry = state.entries[roundIndex][playerIndex];
-              const total = totalBeforeRound(state, playerIndex, roundIndex) + entry.score;
-              const isDealer = playerIndex === dealerIndex;
-              return (
-                <tr key={player} className={isDealer ? "dealer-row" : ""}>
-                  <td>
-                    <span>{player}</span>
-                    {isDealer && <span className="dealer-badge">Dealer</span>}
-                  </td>
-                  <td>
-                    {isBiddingPhase ? (
-                      <input
-                        className="score-input"
-                        type="number"
-                        min="0"
-                        max={roundCards}
-                        inputMode="numeric"
-                        value={entry.bid ?? ""}
-                        onChange={(event) => onScoreChange(playerIndex, "bid", event.target.value)}
-                      />
-                    ) : (
-                      <span className="locked-value">{entry.bid ?? "-"}</span>
-                    )}
-                  </td>
-                  <td>
-                    {isBiddingPhase ? (
-                      <span className="pending-value">After bids</span>
-                    ) : (
-                      <input
-                        className="score-input"
-                        type="number"
-                        min="0"
-                        max={roundCards}
-                        inputMode="numeric"
-                        value={entry.tricks ?? ""}
-                        onChange={(event) => onScoreChange(playerIndex, "tricks", event.target.value)}
-                      />
-                    )}
-                  </td>
-                  <td className={entry.score >= 0 ? "positive" : "negative"}>
-                    {Number.isInteger(entry.bid) && Number.isInteger(entry.tricks) ? entry.score : ""}
-                  </td>
-                  <td>{total}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="mobile-entry-list mobile-only">
+      <div className={`player-entry-list phase-${currentRoundPhase}`} aria-label={isBiddingPhase ? "Bid entry rows" : "Trick entry rows"}>
         {state.players.map((player, playerIndex) => {
           const entry = state.entries[roundIndex][playerIndex];
           const total = totalBeforeRound(state, playerIndex, roundIndex) + entry.score;
           const isDealer = playerIndex === dealerIndex;
+          const hasRoundScore = Number.isInteger(entry.bid) && Number.isInteger(entry.tricks);
+          const activeKey: EntryKey = isBiddingPhase ? "bid" : "tricks";
+          const activeValue = isBiddingPhase ? entry.bid : entry.tricks;
+
           return (
-            <article key={player} className={`mobile-entry-card ${isDealer ? "dealer-card" : ""}`}>
-              <div className="mobile-entry-head">
-                <h3>
+            <article key={player} className={`player-entry-row ${isDealer ? "is-dealer" : ""}`}>
+              <div className="player-entry-main">
+                <h3 className="player-entry-name">
                   {player}
                   {isDealer && <span className="dealer-badge">Dealer</span>}
                 </h3>
-                <span className={entry.score >= 0 ? "positive" : "negative"}>{entry.score}</span>
+                <p className="player-entry-meta">
+                  {isBiddingPhase ? "Enter bid" : `Bid locked: ${entry.bid ?? "-"}`}
+                </p>
               </div>
-              <div className="mobile-entry-fields">
-                {isBiddingPhase ? (
-                  <label>
-                    Bid
+              <div className="player-entry-input">
+                <label className="entry-field">
+                  <span>{isBiddingPhase ? "Bid" : "Tricks won"}</span>
+                  <div className="score-control">
+                    <button
+                      type="button"
+                      className="score-stepper"
+                      onClick={() => onAdjustScore(playerIndex, activeKey, -1)}
+                      aria-label={`Decrease ${isBiddingPhase ? "bid" : "tricks"} for ${player}`}
+                    >
+                      -
+                    </button>
                     <input
                       className="score-input"
                       type="number"
                       min="0"
                       max={roundCards}
                       inputMode="numeric"
-                      value={entry.bid ?? ""}
-                      onChange={(event) => onScoreChange(playerIndex, "bid", event.target.value)}
+                      value={activeValue ?? ""}
+                      onChange={(event) => onScoreChange(playerIndex, activeKey, event.target.value)}
                     />
-                  </label>
-                ) : (
-                  <>
-                    <p className="locked-bid">{`Bid: ${entry.bid ?? "-"}`}</p>
-                    <label>
-                      Tricks Won
-                      <input
-                        className="score-input"
-                        type="number"
-                        min="0"
-                        max={roundCards}
-                        inputMode="numeric"
-                        value={entry.tricks ?? ""}
-                        onChange={(event) => onScoreChange(playerIndex, "tricks", event.target.value)}
-                      />
-                    </label>
-                  </>
-                )}
+                    <button
+                      type="button"
+                      className="score-stepper"
+                      onClick={() => onAdjustScore(playerIndex, activeKey, 1)}
+                      aria-label={`Increase ${isBiddingPhase ? "bid" : "tricks"} for ${player}`}
+                    >
+                      +
+                    </button>
+                  </div>
+                </label>
               </div>
-              <p className="mobile-total">{`Total: ${total}`}</p>
+              <div className="player-entry-score">
+                <div className="score-stack score-stack-round">
+                  <span>Round</span>
+                  <strong className={hasRoundScore ? (entry.score >= 0 ? "positive" : "negative") : ""}>
+                    {hasRoundScore ? entry.score : "--"}
+                  </strong>
+                </div>
+                <div className="score-stack score-stack-total">
+                  <span>Total</span>
+                  <strong>{total}</strong>
+                </div>
+              </div>
             </article>
           );
         })}
       </div>
 
-      <p className="warning">{roundWarning}</p>
+      {roundWarning && (
+        <p className="warning" role="alert" aria-live="assertive">
+          {roundWarning}
+        </p>
+      )}
 
-      <div className="round-actions">
-        <button type="button" className="btn" disabled={roundIndex === 0} onClick={() => onMoveRound(-1)}>
-          Previous
-        </button>
-        <button type="button" className="btn btn-primary" onClick={onPrimaryAction}>
-          {primaryButtonLabel}
-        </button>
+      <div className="round-action-dock">
+        <div className="round-actions">
+          <button type="button" className="btn round-secondary-action" disabled={roundIndex === 0} onClick={() => onMoveRound(-1)}>
+            Previous
+          </button>
+          <button type="button" className="btn btn-primary round-primary-action" onClick={onPrimaryAction}>
+            {primaryButtonLabel}
+          </button>
+        </div>
       </div>
     </section>
   );

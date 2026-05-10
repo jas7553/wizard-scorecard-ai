@@ -265,6 +265,10 @@ export default function App(): JSX.Element {
     }
     return savedScreen ?? (initialState ? "home" : "setup");
   });
+  const [setupError, setSetupError] = useState<string>("");
+  const [setupNotice, setSetupNotice] = useState<string>("");
+  const [confirmReplaceSavedGame, setConfirmReplaceSavedGame] = useState<boolean>(false);
+  const [confirmClearSavedGame, setConfirmClearSavedGame] = useState<boolean>(false);
   const [roundWarning, setRoundWarning] = useState<string>("");
   const [showConfetti, setShowConfetti] = useState<boolean>(false);
   const [confettiSeed, setConfettiSeed] = useState<number>(0);
@@ -311,6 +315,16 @@ export default function App(): JSX.Element {
     const maxScore = Math.max(...totalsByPlayer);
     return state.players.filter((_, index) => totalsByPlayer[index] === maxScore);
   }, [state, totalsByPlayer]);
+  const currentRoundNumber = state ? state.currentRoundIndex + 1 : 0;
+  const savedGameSummary = state
+    ? {
+        players: state.players,
+        currentRoundNumber: state.currentRoundIndex + 1,
+        totalRounds: state.rounds.length,
+        currentPhase: state.roundPhases[state.currentRoundIndex] ?? null,
+        isComplete: gameIsComplete,
+      }
+    : null;
 
   function updateGame(nextState: GameState): void {
     setState(nextState);
@@ -335,11 +349,18 @@ export default function App(): JSX.Element {
     const players = normalizePlayerInputs(setup.players);
 
     if (players.length < 3 || players.length > 6) {
-      window.alert("Please enter between 3 and 6 unique player names.");
+      setSetupNotice("");
+      setSetupError("Enter between 3 and 6 player names before starting the game.");
       return;
     }
     if (hasDuplicatePlayers(players)) {
-      window.alert("Player names must be unique.");
+      setSetupNotice("");
+      setSetupError("Player names must be unique.");
+      return;
+    }
+    if (!setup.startingDealer || !players.includes(setup.startingDealer)) {
+      setSetupNotice("");
+      setSetupError("Choose the starting dealer before starting the game.");
       return;
     }
 
@@ -356,11 +377,17 @@ export default function App(): JSX.Element {
     };
 
     updateGame(game);
+    setSetupError("");
+    setSetupNotice("");
+    setConfirmReplaceSavedGame(false);
+    setConfirmClearSavedGame(false);
     setRoundWarning("");
     setScreenMode("game");
   }
 
   function handlePlayerNameChange(index: number, value: string): void {
+    setSetupError("");
+    setSetupNotice("");
     setSetup((prev) => {
       const nextPlayers = [...prev.players];
       nextPlayers[index] = value;
@@ -369,10 +396,13 @@ export default function App(): JSX.Element {
   }
 
   function handleSetStartingDealer(name: string): void {
+    setSetupError("");
     setSetup((prev) => ({ ...prev, startingDealer: name }));
   }
 
   function handleAddPlayerField(): void {
+    setSetupError("");
+    setSetupNotice("");
     setSetup((prev) => {
       if (prev.players.length >= 6) {
         return prev;
@@ -382,6 +412,8 @@ export default function App(): JSX.Element {
   }
 
   function handleRemovePlayerField(index: number): void {
+    setSetupError("");
+    setSetupNotice("");
     setSetup((prev) => {
       if (prev.players.length <= 1) {
         return prev;
@@ -391,14 +423,26 @@ export default function App(): JSX.Element {
   }
 
   function handleReset(): void {
+    if (hasGame && !confirmClearSavedGame) {
+      setConfirmClearSavedGame(true);
+      setSetupNotice("");
+      setSetupError("");
+      return;
+    }
+
     clearSavedState();
     setState(null);
+    setConfirmClearSavedGame(false);
+    setConfirmReplaceSavedGame(false);
+    setSetupError("");
+    setSetupNotice("Saved game cleared. You can start a fresh table below.");
     setRoundWarning("");
     setScreenMode("setup");
-    window.alert("Saved game cleared.");
   }
 
   function handleGoHome(): void {
+    setConfirmClearSavedGame(false);
+    setConfirmReplaceSavedGame(false);
     setScreenMode("home");
   }
 
@@ -410,20 +454,33 @@ export default function App(): JSX.Element {
     if (!state) {
       return;
     }
+    setConfirmReplaceSavedGame(false);
     setScreenMode("game");
   }
 
   function handleStartNewGameFromHome(): void {
     if (state) {
-      const confirmed = window.confirm("Start a new game and replace the current saved game?");
-      if (!confirmed) {
+      if (!confirmReplaceSavedGame) {
+        setConfirmReplaceSavedGame(true);
         return;
       }
       clearSavedState();
       setState(null);
+      setConfirmReplaceSavedGame(false);
+      setConfirmClearSavedGame(false);
+      setSetupError("");
+      setSetupNotice("Saved game removed. Set up the new table below.");
       setRoundWarning("");
     }
     setScreenMode("setup");
+  }
+
+  function handleCancelStartNew(): void {
+    setConfirmReplaceSavedGame(false);
+  }
+
+  function handleCancelReset(): void {
+    setConfirmClearSavedGame(false);
   }
 
   function handleScoreChange(playerIndex: number, key: "bid" | "tricks", value: string): void {
@@ -446,6 +503,18 @@ export default function App(): JSX.Element {
     }
 
     updateGame(next);
+  }
+
+  function handleAdjustScore(playerIndex: number, key: "bid" | "tricks", delta: 1 | -1): void {
+    if (!state) {
+      return;
+    }
+
+    const roundIndex = state.currentRoundIndex;
+    const roundLimit = state.rounds[roundIndex] ?? 0;
+    const currentValue = state.entries[roundIndex][playerIndex][key];
+    const nextValue = Math.max(0, Math.min(roundLimit, (currentValue ?? 0) + delta));
+    handleScoreChange(playerIndex, key, String(nextValue));
   }
 
   function handleTrumpChange(value: TrumpChoice): void {
@@ -536,71 +605,114 @@ export default function App(): JSX.Element {
           />
         ))}
       </div>
-      <main className="app">
-        <AppHeader showHomeButton={screenMode === "game" || screenMode === "rules"} onGoHome={handleGoHome} />
-
-        <HomePanel
-          visible={screenMode === "home"}
-          hasSavedGame={hasGame}
-          onContinue={handleContinueGame}
-          onStartNew={handleStartNewGameFromHome}
-          onReadRules={handleOpenRules}
-        />
-
-        <RulesPanel visible={screenMode === "rules"} />
-
-        <SetupPanel
-          visible={screenMode === "setup"}
-          setup={setup}
-          setupPlayers={setupPlayers}
-          setupHasDuplicates={setupHasDuplicates}
-          onSubmit={handleStartGame}
-          onPlayerNameChange={handlePlayerNameChange}
-          onSetStartingDealer={handleSetStartingDealer}
-          onRemovePlayer={handleRemovePlayerField}
-          onAddPlayer={handleAddPlayerField}
-          onReset={handleReset}
-        />
-
-        {state && (
-          <>
-            {gameIsComplete ? (
-              <>
-                <ScoreSheetPanel
-                  visible={screenMode === "game"}
-                  state={state}
-                  totalsByPlayer={totalsByPlayer}
-                  leaderboard={leaderboard}
-                  isComplete={true}
-                  winnerNames={winnerNames}
-                  canEditPreviousRound={state.rounds.length > 0}
-                  onEditPreviousRound={handleEditPreviousRound}
-                />
-              </>
-            ) : (
-              <>
-                <RoundPanel
-                  visible={screenMode === "game"}
-                  state={state}
-                  roundWarning={roundWarning}
-                  onScoreChange={handleScoreChange}
-                  onTrumpChange={handleTrumpChange}
-                  onMoveRound={moveRound}
-                  onPrimaryAction={handleRoundPrimaryAction}
-                />
-                <ScoreSheetPanel
-                  visible={screenMode === "game"}
-                  state={state}
-                  totalsByPlayer={totalsByPlayer}
-                  leaderboard={leaderboard}
-                  isComplete={false}
-                  winnerNames={winnerNames}
-                  canEditPreviousRound={false}
-                />
-              </>
-            )}
-          </>
+      <main className={`app app-mode-${screenMode} ${screenMode === "game" ? "app-has-game-surface" : ""}`}>
+        {screenMode !== "game" && (
+          <AppHeader
+            showHomeButton={screenMode === "rules"}
+            onGoHome={handleGoHome}
+            screenMode={screenMode}
+          />
         )}
+
+        <div className={`app-shell ${screenMode === "game" ? "is-game" : "is-static"} ${gameIsComplete ? "is-complete" : ""}`}>
+          <section className="app-stage">
+            {screenMode === "home" && (
+              <HomePanel
+                visible={true}
+                hasSavedGame={hasGame}
+                savedGameSummary={savedGameSummary}
+                confirmReplaceSavedGame={confirmReplaceSavedGame}
+                onContinue={handleContinueGame}
+                onStartNew={handleStartNewGameFromHome}
+                onCancelStartNew={handleCancelStartNew}
+                onReadRules={handleOpenRules}
+              />
+            )}
+
+            {screenMode === "rules" && <RulesPanel visible={true} />}
+
+            {screenMode === "setup" && (
+              <SetupPanel
+                visible={true}
+                setup={setup}
+                setupPlayers={setupPlayers}
+                setupHasDuplicates={setupHasDuplicates}
+                setupError={setupError}
+                setupNotice={setupNotice}
+                hasSavedGame={hasGame}
+                confirmClearSavedGame={confirmClearSavedGame}
+                onSubmit={handleStartGame}
+                onPlayerNameChange={handlePlayerNameChange}
+                onSetStartingDealer={handleSetStartingDealer}
+                onRemovePlayer={handleRemovePlayerField}
+                onAddPlayer={handleAddPlayerField}
+                onReset={handleReset}
+                onCancelReset={handleCancelReset}
+              />
+            )}
+
+            {state && screenMode === "game" && !gameIsComplete && (
+              <RoundPanel
+                visible={true}
+                state={state}
+                roundWarning={roundWarning}
+                onScoreChange={handleScoreChange}
+                onAdjustScore={handleAdjustScore}
+                onTrumpChange={handleTrumpChange}
+                onMoveRound={moveRound}
+                onPrimaryAction={handleRoundPrimaryAction}
+              />
+            )}
+
+            {state && screenMode === "game" && gameIsComplete && (
+              <ScoreSheetPanel
+                visible={true}
+                state={state}
+                totalsByPlayer={totalsByPlayer}
+                leaderboard={leaderboard}
+                isComplete={true}
+                winnerNames={winnerNames}
+                canEditPreviousRound={state.rounds.length > 0}
+                onEditPreviousRound={handleEditPreviousRound}
+              />
+            )}
+          </section>
+
+          <aside className="app-rail">
+            {!state && (
+              <section className="shell-card shell-card-table">
+                <p className="shell-card-label">Foundation</p>
+                <h2>Primary stage, secondary rail</h2>
+                <p className="shell-card-copy">
+                  The shell now keeps one dominant work surface in front and moves context, status, and help into supporting
+                  surfaces.
+                </p>
+              </section>
+            )}
+
+            {state && screenMode === "game" && !gameIsComplete ? (
+              <ScoreSheetPanel
+                visible={true}
+                state={state}
+                totalsByPlayer={totalsByPlayer}
+                leaderboard={leaderboard}
+                isComplete={false}
+                winnerNames={winnerNames}
+                canEditPreviousRound={false}
+              />
+            ) : (
+              <section className="shell-card shell-card-principles">
+                <p className="shell-card-label">Milestone 1</p>
+                <h2>Layout system in place</h2>
+                <ul className="shell-list">
+                  <li>One shared desktop/mobile shell.</li>
+                  <li>Main workspace separated from supporting context.</li>
+                  <li>Token-driven spacing, color, and surface hierarchy.</li>
+                </ul>
+              </section>
+            )}
+          </aside>
+        </div>
       </main>
     </>
   );
