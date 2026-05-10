@@ -1,4 +1,5 @@
 import React from "react";
+import { playerTotals } from "../game";
 import { EntryKey, GameState, RoundPhase, TrumpChoice } from "../types";
 
 interface RoundPanelProps {
@@ -9,14 +10,6 @@ interface RoundPanelProps {
   onTrumpChange: (value: TrumpChoice) => void;
   onMoveRound: (direction: 1 | -1) => void;
   onPrimaryAction: () => void;
-}
-
-function totalBeforeRound(state: GameState, playerIndex: number, roundIndex: number): number {
-  let total = 0;
-  for (let index = 0; index < roundIndex; index += 1) {
-    total += state.entries[index][playerIndex].score;
-  }
-  return total;
 }
 
 function trumpLabel(choice: TrumpChoice): string {
@@ -71,6 +64,7 @@ export default function RoundPanel({
   const totalBidsThisRound = roundEntries.reduce((sum, entry) => sum + (entry.bid ?? 0), 0);
   const totalTricksEntered = roundEntries.reduce((sum, entry) => sum + (entry.tricks ?? 0), 0);
   const tricksEnteredCount = roundEntries.filter((entry) => Number.isInteger(entry.tricks)).length;
+  const totalsBeforeRound = playerTotals(state, roundIndex);
 
   const dealerIndex = (state.startingDealerIndex + state.currentRoundIndex) % state.players.length;
   const dealerName = state.players[dealerIndex] ?? "";
@@ -161,7 +155,7 @@ export default function RoundPanel({
           <tbody>
             {state.players.map((player, playerIndex) => {
               const entry = state.entries[roundIndex][playerIndex];
-              const total = totalBeforeRound(state, playerIndex, roundIndex) + entry.score;
+              const total = totalsBeforeRound[playerIndex] + entry.score;
               const isDealer = playerIndex === dealerIndex;
               return (
                 <tr key={player} className={isDealer ? "dealer-row" : ""}>
@@ -213,7 +207,7 @@ export default function RoundPanel({
       <div className="mobile-entry-list mobile-only">
         {state.players.map((player, playerIndex) => {
           const entry = state.entries[roundIndex][playerIndex];
-          const total = totalBeforeRound(state, playerIndex, roundIndex) + entry.score;
+          const total = totalsBeforeRound[playerIndex] + entry.score;
           const isDealer = playerIndex === dealerIndex;
           return (
             <article key={player} className={`mobile-entry-card ${isDealer ? "dealer-card" : ""}`}>

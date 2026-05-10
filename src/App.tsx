@@ -5,6 +5,7 @@ import RoundPanel from "./components/RoundPanel";
 import RulesPanel from "./components/RulesPanel";
 import ScoreSheetPanel from "./components/ScoreSheetPanel";
 import SetupPanel from "./components/SetupPanel";
+import { computeRoundScore, emptyRound, playerTotals, roundsForPlayerCount, validateBids, validateTricks } from "./game";
 import { GameState, LeaderboardRow, RoundEntry, RoundPhase, ScreenMode, SetupState, TrumpChoice } from "./types";
 
 const STORAGE_KEY = "wizard-scorepad-state-v1";
@@ -118,13 +119,6 @@ function deriveRoundPhases(entries: RoundEntry[][]): RoundPhase[] {
   });
 }
 
-function computeRoundScore(bid: number, tricks: number): number {
-  if (bid === tricks) {
-    return 20 + bid * 10;
-  }
-  return Math.abs(bid - tricks) * -10;
-}
-
 function normalizePlayerInputs(players: string[]): string[] {
   return players
     .map((player) => player.trim())
@@ -134,21 +128,6 @@ function normalizePlayerInputs(players: string[]): string[] {
 function hasDuplicatePlayers(players: string[]): boolean {
   const normalized = players.map((player) => player.toLocaleLowerCase());
   return new Set(normalized).size !== normalized.length;
-}
-
-function roundsForPlayerCount(playerCount: number): number[] {
-  const roundsByPlayerCount: Record<number, number> = {
-    3: 20,
-    4: 15,
-    5: 12,
-    6: 10,
-  };
-  const totalRounds = roundsByPlayerCount[playerCount];
-  return Array.from({ length: totalRounds }, (_, index) => index + 1);
-}
-
-function emptyRound(playerCount: number): RoundEntry[] {
-  return Array.from({ length: playerCount }, () => ({ bid: null, tricks: null, score: 0 }));
 }
 
 function loadState(): GameState | null {
@@ -200,54 +179,6 @@ function saveScreenMode(mode: ScreenMode): void {
 
 function clearSavedState(): void {
   window.localStorage.removeItem(STORAGE_KEY);
-}
-
-function playerTotals(state: GameState): number[] {
-  return state.players.map((_, playerIndex) => state.entries.reduce((sum, round) => sum + round[playerIndex].score, 0));
-}
-
-function validateBids(state: GameState, roundIndex: number): string {
-  const entries = state.entries[roundIndex];
-  const cards = state.rounds[roundIndex];
-
-  const incomplete = entries.some((entry) => !Number.isInteger(entry.bid));
-  if (incomplete) {
-    return "Fill in all bids before submitting bids.";
-  }
-
-  const outOfBounds = entries.some((entry) => entry.bid !== null && (entry.bid < 0 || entry.bid > cards));
-  if (outOfBounds) {
-    return `Bids must be between 0 and ${cards}.`;
-  }
-
-  return "";
-}
-
-function validateTricks(state: GameState, roundIndex: number): string {
-  const entries = state.entries[roundIndex];
-  const cards = state.rounds[roundIndex];
-
-  const missingBids = entries.some((entry) => !Number.isInteger(entry.bid));
-  if (missingBids) {
-    return "Submit bids before entering tricks won.";
-  }
-
-  const incomplete = entries.some((entry) => !Number.isInteger(entry.tricks));
-  if (incomplete) {
-    return "Fill in all tricks won before saving the round.";
-  }
-
-  const outOfBounds = entries.some((entry) => entry.tricks !== null && (entry.tricks < 0 || entry.tricks > cards));
-  if (outOfBounds) {
-    return `Tricks won must be between 0 and ${cards}.`;
-  }
-
-  const tricksSum = entries.reduce((acc, entry) => acc + (entry.tricks ?? 0), 0);
-  if (tricksSum !== cards) {
-    return `Tricks total must equal ${cards}. Current total is ${tricksSum}.`;
-  }
-
-  return "";
 }
 
 export default function App(): JSX.Element {
