@@ -24,7 +24,7 @@ export interface SetupState {
   startingDealer: string;
 }
 
-export interface LeaderboardRow {
+export interface StandingsRow {
   name: string;
   total: number;
 }

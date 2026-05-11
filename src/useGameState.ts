@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
-import { playerTotals } from "./game";
+import { useState } from "react";
+import { buildStandings, isGameComplete, playerTotals } from "./game";
 import { advancePhase, createGame, editPreviousRound, moveRound, updateScore, updateTrump } from "./gameStateMachine";
-import { GameState, LeaderboardRow, RoundEntry, RoundPhase, TrumpChoice } from "./types";
+import { GameState, RoundEntry, RoundPhase, StandingsRow, TrumpChoice } from "./types";
 
 const STORAGE_KEY = "wizard-scorepad-state-v1";
 const TRUMP_CHOICES: TrumpChoice[] = ["unset", "none", "blue", "green", "red", "yellow"];
@@ -138,8 +138,7 @@ export interface UseGameStateResult {
   roundWarning: string;
   totalsByPlayer: number[];
   gameIsComplete: boolean;
-  winnerNames: string[];
-  leaderboard: LeaderboardRow[];
+  standings: StandingsRow[];
   startGame: (players: string[], startingDealerName: string) => void;
   resetGame: () => void;
   handleScoreChange: (playerIndex: number, key: "bid" | "tricks", value: string) => void;
@@ -158,25 +157,9 @@ export function useGameState({ onGameComplete }: UseGameStateOptions): UseGameSt
     saveState(next);
   }
 
-  const totalsByPlayer = useMemo<number[]>(() => (state ? playerTotals(state) : []), [state]);
-
-  const gameIsComplete = useMemo<boolean>(
-    () => (state ? state.roundPhases.every((p) => p === "complete") : false),
-    [state]
-  );
-
-  const winnerNames = useMemo<string[]>(() => {
-    if (!state || totalsByPlayer.length === 0) return [];
-    const max = Math.max(...totalsByPlayer);
-    return state.players.filter((_, i) => totalsByPlayer[i] === max);
-  }, [state, totalsByPlayer]);
-
-  const leaderboard = useMemo<LeaderboardRow[]>(() => {
-    if (!state) return [];
-    return state.players
-      .map((name, i) => ({ name, total: totalsByPlayer[i] }))
-      .sort((a, b) => b.total - a.total);
-  }, [state, totalsByPlayer]);
+  const totalsByPlayer = state ? playerTotals(state) : [];
+  const gameIsComplete = state ? isGameComplete(state) : false;
+  const standings = state ? buildStandings(state) : [];
 
   function startGame(players: string[], startingDealerName: string): void {
     const next = createGame(players, startingDealerName);
@@ -233,8 +216,7 @@ export function useGameState({ onGameComplete }: UseGameStateOptions): UseGameSt
     roundWarning,
     totalsByPlayer,
     gameIsComplete,
-    winnerNames,
-    leaderboard,
+    standings,
     startGame,
     resetGame,
     handleScoreChange,

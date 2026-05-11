@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeAll } from "vitest";
 import { buildScoreSheetImage } from "./scoreSheetImage";
-import type { GameState, LeaderboardRow } from "./types";
+import type { GameState, StandingsRow } from "./types";
 
 const mockCtx = {
   scale: () => {},
@@ -46,7 +46,7 @@ function makeState(playerCount: number, roundCount: number): GameState {
   };
 }
 
-function makeLeaderboard(players: string[], totals: number[]): LeaderboardRow[] {
+function makeStandings(players: string[], totals: number[]): StandingsRow[] {
   return players
     .map((name, i) => ({ name, total: totals[i] }))
     .sort((a, b) => b.total - a.total);
@@ -56,22 +56,22 @@ describe("buildScoreSheetImage", () => {
   it("returns a Blob for a valid completed game", async () => {
     const state = makeState(3, 3);
     const totals = [90, 60, 30];
-    const leaderboard = makeLeaderboard(state.players, totals);
-    const result = await buildScoreSheetImage(state, totals, leaderboard, ["P1"]);
+    const standings = makeStandings(state.players, totals);
+    const result = await buildScoreSheetImage(state, totals, standings, ["P1"]);
     expect(result).toBeInstanceOf(Blob);
   });
 
   it("does not throw for minimal input — 1 player, 1 round", async () => {
     const state = makeState(1, 1);
     const totals = [30];
-    const leaderboard = makeLeaderboard(state.players, totals);
-    await expect(buildScoreSheetImage(state, totals, leaderboard, ["P1"])).resolves.toBeInstanceOf(Blob);
+    const standings = makeStandings(state.players, totals);
+    await expect(buildScoreSheetImage(state, totals, standings, ["P1"])).resolves.toBeInstanceOf(Blob);
   });
 
   it("does not throw for maximal input — 6 players, 20 rounds", async () => {
     const state = makeState(6, 20);
     const totals = [600, 500, 400, 300, 200, 100];
-    const leaderboard = makeLeaderboard(state.players, totals);
-    await expect(buildScoreSheetImage(state, totals, leaderboard, ["P1"])).resolves.toBeInstanceOf(Blob);
+    const standings = makeStandings(state.players, totals);
+    await expect(buildScoreSheetImage(state, totals, standings, ["P1"])).resolves.toBeInstanceOf(Blob);
   });
 });

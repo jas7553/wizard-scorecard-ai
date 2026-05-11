@@ -40,6 +40,10 @@ _Avoid_: Trump color, suit (alone)
 **Score**:
 Points earned in a round (exact match: 20 + bid×10; miss: |bid−tricks won|×−10). "Score" applies to both per-round and cumulative totals; context disambiguates.
 
+**Standings**:
+The ranked list of Players by cumulative Score at any point in a Game, ordered highest to lowest. Position may change each Round. At game end, the top position determines the Winner(s).
+_Avoid_: Leaderboard
+
 **Winner**:
 The player(s) with the highest Score at the end of a Game. Ties are possible and valid — no tiebreaker.
 

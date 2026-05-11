@@ -97,6 +97,10 @@ export default function App(): JSX.Element {
 
   const confettiPieces = useMemo(() => buildConfettiPieces(confettiSeed), [confettiSeed]);
 
+  const winnerNames = game.standings
+    .filter((r) => r.total === game.standings[0]?.total)
+    .map((r) => r.name);
+
   function handleStartGame(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     const players = normalizePlayerInputs(setup.players);
@@ -196,9 +200,9 @@ export default function App(): JSX.Element {
                 visible={screenMode === "game"}
                 state={game.state}
                 totalsByPlayer={game.totalsByPlayer}
-                leaderboard={game.leaderboard}
+                standings={game.standings}
                 isComplete={true}
-                winnerNames={game.winnerNames}
+                winnerNames={winnerNames}
                 canEditPreviousRound={game.state.rounds.length > 0}
                 onEditPreviousRound={game.handleEditPreviousRound}
               />
@@ -217,9 +221,9 @@ export default function App(): JSX.Element {
                   visible={screenMode === "game"}
                   state={game.state}
                   totalsByPlayer={game.totalsByPlayer}
-                  leaderboard={game.leaderboard}
+                  standings={game.standings}
                   isComplete={false}
-                  winnerNames={game.winnerNames}
+                  winnerNames={winnerNames}
                   canEditPreviousRound={false}
                 />
               </>

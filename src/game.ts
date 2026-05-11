@@ -1,4 +1,4 @@
-import { GameState, RoundEntry } from "./types";
+import { GameState, RoundEntry, StandingsRow } from "./types";
 
 export function computeRoundScore(bid: number, tricks: number): number {
   if (bid === tricks) {
@@ -55,4 +55,15 @@ export function playerTotals(state: GameState, upToRound?: number): number[] {
   return state.players.map((_, playerIndex) =>
     state.entries.slice(0, limit).reduce((sum, round) => sum + round[playerIndex].score, 0)
   );
+}
+
+export function isGameComplete(state: GameState): boolean {
+  return state.roundPhases.every((p) => p === "complete");
+}
+
+export function buildStandings(state: GameState): StandingsRow[] {
+  const totals = playerTotals(state);
+  return state.players
+    .map((name, i) => ({ name, total: totals[i] }))
+    .sort((a, b) => b.total - a.total);
 }

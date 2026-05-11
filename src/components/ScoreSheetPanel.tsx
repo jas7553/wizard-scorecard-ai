@@ -1,12 +1,12 @@
 import React, { useState } from "react";
-import { GameState, LeaderboardRow } from "../types";
+import { GameState, StandingsRow } from "../types";
 import { buildScoreSheetImage } from "../scoreSheetImage";
 
 interface ScoreSheetPanelProps {
   visible: boolean;
   state: GameState;
   totalsByPlayer: number[];
-  leaderboard: LeaderboardRow[];
+  standings: StandingsRow[];
   isComplete: boolean;
   winnerNames: string[];
   canEditPreviousRound: boolean;
@@ -17,7 +17,7 @@ export default function ScoreSheetPanel({
   visible,
   state,
   totalsByPlayer,
-  leaderboard,
+  standings,
   isComplete,
   winnerNames,
   canEditPreviousRound,
@@ -98,7 +98,7 @@ export default function ScoreSheetPanel({
   function renderStandings(): JSX.Element {
     return (
       <div className="standings-strip">
-        {leaderboard.map((row, index) => (
+        {standings.map((row, index) => (
           <div key={`standing-${row.name}`} className={`standing-pill ${isWinner(row.name) ? "winner-pill" : ""}`}>
             <span>{`#${index + 1} ${row.name}`}</span>
             <strong>{row.total}</strong>
@@ -121,7 +121,7 @@ export default function ScoreSheetPanel({
       const filename = `wizard-score-sheet-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
         now.getDate(),
       ).padStart(2, "0")}.png`;
-      const blob = await buildScoreSheetImage(state, totalsByPlayer, leaderboard, winnerNames);
+      const blob = await buildScoreSheetImage(state, totalsByPlayer, standings, winnerNames);
       const file = new File([blob], filename, { type: "image/png", lastModified: Date.now() });
 
       const maybeShare = navigator as Navigator & {

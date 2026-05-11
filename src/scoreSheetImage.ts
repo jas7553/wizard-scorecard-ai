@@ -1,19 +1,19 @@
-import type { GameState, LeaderboardRow } from "./types";
+import type { GameState, StandingsRow } from "./types";
 
 export function buildScoreSheetImage(
   state: GameState,
   totalsByPlayer: number[],
-  leaderboard: LeaderboardRow[],
+  standings: StandingsRow[],
   winnerNames: string[],
 ): Promise<Blob> {
-  const canvas = buildCanvas(state, totalsByPlayer, leaderboard, winnerNames);
+  const canvas = buildCanvas(state, totalsByPlayer, standings, winnerNames);
   return canvasToBlob(canvas);
 }
 
 function buildCanvas(
   state: GameState,
   totalsByPlayer: number[],
-  leaderboard: LeaderboardRow[],
+  standings: StandingsRow[],
   winnerNames: string[],
 ): HTMLCanvasElement {
   const roundCount = state.rounds.length;
@@ -29,7 +29,7 @@ function buildCanvas(
   const tableHeight = tableRowHeight * (roundCount + 2);
   const standingsGap = 8;
   const standingsCols = Math.min(3, Math.max(1, playerCount));
-  const standingsRows = Math.ceil(leaderboard.length / standingsCols);
+  const standingsRows = Math.ceil(standings.length / standingsCols);
   const standingsItemHeight = 34;
   const standingsHeight = standingsRows * standingsItemHeight + Math.max(0, standingsRows - 1) * standingsGap;
 
@@ -179,7 +179,7 @@ function buildCanvas(
   const standingsWidth = tableWidth;
   const standingsItemWidth = (standingsWidth - standingsGap * (standingsCols - 1)) / standingsCols;
 
-  leaderboard.forEach((row, index) => {
+  standings.forEach((row, index) => {
     const column = index % standingsCols;
     const rowIndex = Math.floor(index / standingsCols);
     const x = tableX + column * (standingsItemWidth + standingsGap);
