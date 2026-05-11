@@ -4,7 +4,7 @@ import { advancePhase, createGame, editPreviousRound, moveRound, updateScore, up
 import { GameState, LeaderboardRow, RoundEntry, RoundPhase, TrumpChoice } from "./types";
 
 const STORAGE_KEY = "wizard-scorepad-state-v1";
-const TRUMP_CHOICES: TrumpChoice[] = ["unset", "none", "hearts", "clubs", "diamonds", "spades"];
+const TRUMP_CHOICES: TrumpChoice[] = ["unset", "none", "blue", "green", "red", "yellow"];
 
 function isTrumpChoice(value: unknown): value is TrumpChoice {
   return typeof value === "string" && TRUMP_CHOICES.includes(value as TrumpChoice);
@@ -31,7 +31,7 @@ function isGameState(value: unknown): value is GameState {
     Number.isInteger(c.currentRoundIndex) &&
     Number.isInteger(c.startingDealerIndex) &&
     Array.isArray(c.roundPhases) &&
-    c.roundPhases.every((p) => p === "bidding" || p === "tricks" || p === "complete") &&
+    c.roundPhases.every((p) => p === "bidding" || p === "results" || p === "complete") &&
     Array.isArray(c.roundTrump) &&
     c.roundTrump.every(isTrumpChoice) &&
     Array.isArray(c.entries) &&
@@ -72,16 +72,37 @@ function deriveRoundPhases(entries: RoundEntry[][]): RoundPhase[] {
     const allBids = round.every((e) => Number.isInteger(e.bid));
     const allTricks = round.every((e) => Number.isInteger(e.tricks));
     if (allBids && allTricks) return "complete";
-    if (allBids) return "tricks";
+    if (allBids) return "results";
     return "bidding";
   });
+}
+
+const SUIT_MIGRATION: Record<string, TrumpChoice> = {
+  hearts: "blue",
+  clubs: "green",
+  diamonds: "red",
+  spades: "yellow",
+};
+
+function migrateRawState(parsed: unknown): unknown {
+  if (!parsed || typeof parsed !== "object") return parsed;
+  const obj = { ...(parsed as Record<string, unknown>) };
+  if (Array.isArray(obj.roundTrump)) {
+    obj.roundTrump = obj.roundTrump.map((t: unknown) =>
+      typeof t === "string" && SUIT_MIGRATION[t] ? SUIT_MIGRATION[t] : t
+    );
+  }
+  if (Array.isArray(obj.roundPhases)) {
+    obj.roundPhases = obj.roundPhases.map((p: unknown) => (p === "tricks" ? "results" : p));
+  }
+  return obj;
 }
 
 function loadState(): GameState | null {
   try {
     const data = window.localStorage.getItem(STORAGE_KEY);
     if (!data) return null;
-    const parsed: unknown = JSON.parse(data);
+    const parsed: unknown = migrateRawState(JSON.parse(data));
     if (isGameState(parsed)) return parsed;
     if (isLegacyGameState(parsed)) {
       const phases =

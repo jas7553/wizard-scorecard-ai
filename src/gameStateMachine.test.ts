@@ -38,11 +38,11 @@ describe("createGame", () => {
 });
 
 describe("advancePhase", () => {
-  it("valid bids: phase advances to tricks, no warning, not complete", () => {
+  it("valid bids: phase advances to results, no warning, not complete", () => {
     const state = makeState();
     const result = advancePhase(state);
 
-    expect(result.state.roundPhases[0]).toBe("tricks");
+    expect(result.state.roundPhases[0]).toBe("results");
     expect(result.warning).toBe("");
     expect(result.gameComplete).toBe(false);
   });
@@ -63,7 +63,7 @@ describe("advancePhase", () => {
 
   it("valid tricks mid-game: phase complete, index advances", () => {
     const state = makeState({
-      roundPhases: ["tricks", "bidding", "bidding"],
+      roundPhases: ["results", "bidding", "bidding"],
       entries: [
         [{ bid: 1, tricks: 1, score: 0 }, { bid: 1, tricks: 1, score: 0 }, { bid: 1, tricks: 1, score: 0 }],
         ...makeState().entries.slice(1),
@@ -80,7 +80,7 @@ describe("advancePhase", () => {
   it("valid tricks last round: gameComplete true", () => {
     const state = makeState({
       currentRoundIndex: 2,
-      roundPhases: ["complete", "complete", "tricks"],
+      roundPhases: ["complete", "complete", "results"],
       entries: [
         makeState().entries[0],
         makeState().entries[1],
@@ -96,7 +96,7 @@ describe("advancePhase", () => {
 
   it("invalid tricks: warning set, phase unchanged", () => {
     const state = makeState({
-      roundPhases: ["tricks", "bidding", "bidding"],
+      roundPhases: ["results", "bidding", "bidding"],
       entries: [
         [{ bid: 1, tricks: null, score: 0 }, { bid: 1, tricks: null, score: 0 }, { bid: 1, tricks: null, score: 0 }],
         ...makeState().entries.slice(1),
@@ -104,7 +104,7 @@ describe("advancePhase", () => {
     });
     const result = advancePhase(state);
 
-    expect(result.state.roundPhases[0]).toBe("tricks");
+    expect(result.state.roundPhases[0]).toBe("results");
     expect(result.warning).not.toBe("");
     expect(result.gameComplete).toBe(false);
   });
@@ -144,14 +144,14 @@ describe("updateScore", () => {
 describe("updateTrump", () => {
   it("updates trump for current round", () => {
     const state = makeState();
-    const next = updateTrump(state, "hearts");
+    const next = updateTrump(state, "blue");
 
-    expect(next.roundTrump[0]).toBe("hearts");
+    expect(next.roundTrump[0]).toBe("blue");
   });
 
   it("no-op on final round", () => {
     const state = makeState({ currentRoundIndex: 2 });
-    const next = updateTrump(state, "hearts");
+    const next = updateTrump(state, "blue");
 
     expect(next.roundTrump[2]).toBe("none");
   });
@@ -174,10 +174,10 @@ describe("moveRound", () => {
 });
 
 describe("editPreviousRound", () => {
-  it("reverts current round phase from complete to tricks", () => {
+  it("reverts current round phase from complete to results", () => {
     const state = makeState({ roundPhases: ["complete", "complete", "complete"], currentRoundIndex: 2 });
     const next = editPreviousRound(state);
 
-    expect(next.roundPhases[2]).toBe("tricks");
+    expect(next.roundPhases[2]).toBe("results");
   });
 });

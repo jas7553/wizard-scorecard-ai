@@ -1,7 +1,7 @@
 export type EntryKey = "bid" | "tricks";
-export type RoundPhase = "bidding" | "tricks" | "complete";
+export type RoundPhase = "bidding" | "results" | "complete";
 export type ScreenMode = "home" | "setup" | "game" | "rules";
-export type TrumpChoice = "unset" | "none" | "hearts" | "clubs" | "diamonds" | "spades";
+export type TrumpChoice = "unset" | "none" | "blue" | "green" | "red" | "yellow";
 
 export interface RoundEntry {
   bid: number | null;

@@ -31,7 +31,7 @@ export function advancePhase(state: GameState): AdvancePhaseResult {
   const next = structuredClone(state);
 
   if (currentPhase === "bidding") {
-    next.roundPhases[currentRoundIndex] = "tricks";
+    next.roundPhases[currentRoundIndex] = "results";
     return { state: next, warning: "", gameComplete: false };
   }
 
@@ -80,6 +80,6 @@ export function moveRound(state: GameState, direction: 1 | -1): GameState {
 
 export function editPreviousRound(state: GameState): GameState {
   const next = structuredClone(state);
-  next.roundPhases[state.currentRoundIndex] = "tricks";
+  next.roundPhases[state.currentRoundIndex] = "results";
   return next;
 }

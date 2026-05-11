@@ -14,14 +14,14 @@ interface RoundPanelProps {
 
 function trumpLabel(choice: TrumpChoice): string {
   switch (choice) {
-    case "hearts":
-      return "Hearts";
-    case "clubs":
-      return "Clubs";
-    case "diamonds":
-      return "Diamonds";
-    case "spades":
-      return "Spades";
+    case "blue":
+      return "Blue";
+    case "green":
+      return "Green";
+    case "red":
+      return "Red";
+    case "yellow":
+      return "Yellow";
     case "none":
       return "No Trump";
     default:
@@ -31,14 +31,14 @@ function trumpLabel(choice: TrumpChoice): string {
 
 function trumpSymbol(choice: TrumpChoice): string {
   switch (choice) {
-    case "hearts":
-      return "♥";
-    case "clubs":
-      return "♣";
-    case "diamonds":
-      return "♦";
-    case "spades":
-      return "♠";
+    case "blue":
+      return "B";
+    case "green":
+      return "G";
+    case "red":
+      return "R";
+    case "yellow":
+      return "Y";
     case "none":
       return "Ø";
     default:
@@ -112,10 +112,10 @@ export default function RoundPanel({
             >
               <option value="unset">Unset</option>
               <option value="none">None</option>
-              <option value="hearts">Hearts</option>
-              <option value="clubs">Clubs</option>
-              <option value="diamonds">Diamonds</option>
-              <option value="spades">Spades</option>
+              <option value="blue">Blue</option>
+              <option value="green">Green</option>
+              <option value="red">Red</option>
+              <option value="yellow">Yellow</option>
             </select>
           </div>
           <div className="summary-item">

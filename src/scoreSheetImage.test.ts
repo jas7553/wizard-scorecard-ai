@@ -41,7 +41,7 @@ function makeState(playerCount: number, roundCount: number): GameState {
     currentRoundIndex: 0,
     startingDealerIndex: 0,
     roundPhases: rounds.map(() => "complete" as const),
-    roundTrump: rounds.map(() => "hearts" as const),
+    roundTrump: rounds.map(() => "blue" as const),
     entries,
   };
 }

@@ -1,0 +1,3 @@
+# Use screenMode union instead of a router library
+
+Screen navigation is handled via a `screenMode` string union (`"home" | "setup" | "game" | "rules"`) held in React state and persisted to localStorage, rather than a router library like React Router. The app has exactly four screens with no deep linking, no back-button requirements, and no URL-based sharing — a router library would add dependency weight and URL-management complexity with no user-facing benefit at this scale. If the app grows to require URL-based navigation or sharable links to specific screens, this decision should be revisited.
